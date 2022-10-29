@@ -1,0 +1,4 @@
+{:paths ["src" "resources" "target/resources"]
+ :deps {com.biffweb/biff {:git/url "https://github.com/jacobobryant/biff" :sha "9d725ba74514032b3a6f86affe16f8d3c9693135"}
+        camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
+        org.slf4j/slf4j-simple {:mvn/version "2.0.0-alpha5"}}}
