@@ -11,10 +11,10 @@
   (apply
    biff/base-html
    (-> opts
-       (merge #:base{:title "My Application"
+       (merge #:base{:title "Eelchat"
                      :lang "en-US"
                      :icon "/img/glider.png"
-                     :description "My Application Description"
+                     :description "The world's finest discussion platform."
                      :image "https://clojure.org/images/clojure-logo-120b.png"})
        (update :base/head (fn [head]
                             (concat [[:link {:rel "stylesheet" :href (css-path)}]
