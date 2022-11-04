@@ -13,13 +13,19 @@
    (-> opts
        (merge #:base{:title "Eelchat"
                      :lang "en-US"
-                     :icon "/img/glider.png"
                      :description "The world's finest discussion platform."
-                     :image "https://clojure.org/images/clojure-logo-120b.png"})
+                     :image "/img/logo.png"})
        (update :base/head (fn [head]
                             (concat [[:link {:rel "stylesheet" :href (css-path)}]
                                      [:script {:src "https://unpkg.com/htmx.org@1.6.1"}]
-                                     [:script {:src "https://unpkg.com/hyperscript.org@0.9.3"}]]
+                                     [:script {:src "https://unpkg.com/hyperscript.org@0.9.3"}]
+                                     [:link {:href "/apple-touch-icon.png", :sizes "180x180", :rel "apple-touch-icon"}]
+                                     [:link {:href "/favicon-32x32.png", :sizes "32x32", :type "image/png", :rel "icon"}]
+                                     [:link {:href "/favicon-16x16.png", :sizes "16x16", :type "image/png", :rel "icon"}]
+                                     [:link {:href "/site.webmanifest", :rel "manifest"}]
+                                     [:link {:color "#5bbad5", :href "/safari-pinned-tab.svg", :rel "mask-icon"}]
+                                     [:meta {:content "#da532c", :name "msapplication-TileColor"}]
+                                     [:meta {:content "#0d9488", :name "theme-color"}]]
                                     head))))
    body))
 
