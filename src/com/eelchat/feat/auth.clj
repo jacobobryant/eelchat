@@ -22,12 +22,12 @@
 
 (defn signin-template [{:keys [to url]}]
   {:to to
-   :subject "Sign in to My Application"
+   :subject "Join the eelchat waitlist"
    :html-body (rum/render-static-markup
                [:html
                 [:body
-                 [:p "We received a request to sign in to My Application using this email address."]
-                 [:p [:a {:href url :target "_blank"} "Click here to sign in."]]
+                 [:p "We received a request to join eelchat using this email address."]
+                 [:p [:a {:href url :target "_blank"} "Click here to join the waitlist."]]
                  [:p "If you did not request this link, you can ignore this email."]]])
    :message-stream "outbound"})
 
@@ -98,7 +98,7 @@
 (def signin-sent
   (ui/page
    {}
-   [:div "We've sent a sign-in link to your email address. Please check your inbox."]))
+   [:div "We've sent a confirmation link to your email address. Please check your inbox."]))
 
 (def signin-fail
   (ui/page
