@@ -32,5 +32,8 @@
 (defn page [opts & body]
   (base
    opts
-   [:.p-3.mx-auto.max-w-screen-sm.w-full
-    body]))
+   [:.bg-orange-50.flex.flex-col.flex-grow
+    [:.grow]
+    [:.p-3.mx-auto.max-w-screen-sm.w-full
+     body]
+    [:div {:class "grow-[2]"}]]))
