@@ -68,7 +68,7 @@
      "The world's finest discussion platform"]
     [:.h-2]
     [:.sm:text-lg.sm:text-center.w-full
-     "Chat, forums, threads—Eelchat has it all. Coming soon."]
+     "Chat, forums, threads—eelchat has it all. Coming soon."]
     [:.h-6]
     (signin-form sys)
     [:.h-12 {:class "grow-[2]"}]

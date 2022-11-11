@@ -22,11 +22,11 @@
 
 (defn signin-template [{:keys [to url]}]
   {:to to
-   :subject "Join the Eelchat waitlist"
+   :subject "Join the eelchat waitlist"
    :html-body (rum/render-static-markup
                [:html
                 [:body
-                 [:p "We received a request to join Eelchat using this email address."]
+                 [:p "We received a request to join eelchat using this email address."]
                  [:p [:a {:href url :target "_blank"} "Click here to join the waitlist."]]
                  [:p "If you did not request this link, you can ignore this email."]]])
    :message-stream "outbound"})

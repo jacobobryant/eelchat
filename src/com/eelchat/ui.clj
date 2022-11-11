@@ -11,7 +11,7 @@
   (apply
    biff/base-html
    (-> opts
-       (merge #:base{:title "Eelchat"
+       (merge #:base{:title "eelchat"
                      :lang "en-US"
                      :description "The world's finest discussion platform."
                      :image "/img/logo.png"})

@@ -18,7 +18,7 @@
       "."]
      [:.h-6]
      [:div "Thanks for joining the waitlist. "
-      "We'll let you know when Eelchat is ready to use."])))
+      "We'll let you know when eelchat is ready to use."])))
 
 (def features
   {:routes ["/app" {:middleware [mid/wrap-signed-in]}
