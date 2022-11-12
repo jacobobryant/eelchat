@@ -22,20 +22,49 @@
     {:status 303
      :headers {"Location" (str "/community/" comm-id)}}))
 
-(defn community [{:keys [biff/db path-params] :as req}]
-  (if (some? (xt/entity db (parse-uuid (:id path-params))))
+(defn join-community [{:keys [user community] :as req}]
+  (biff/submit-tx req
+    [{:db/doc-type :membership
+      :db.op/upsert {:mem/user (:xt/id user)
+                     :mem/comm (:xt/id community)}
+      :mem/roles [:db/default #{}]}])
+  {:status 303
+   :headers {"Location" (str "/community/" (:xt/id community))}})
+
+(defn community [{:keys [biff/db user community] :as req}]
+  (let [member (some (fn [mem]
+                       (= (:xt/id community) (get-in mem [:mem/comm :xt/id])))
+                     (:user/mems user))]
     (ui/app-page
      req
-     [:.border.border-neutral-600.p-3.bg-white.grow
-      "Messages window"]
-     [:.h-3]
-     [:.border.border-neutral-600.p-3.h-28.bg-white
-      "Compose window"])
-    {:status 303
-     :headers {"location" "/app"}}))
+     (if member
+       [:<>
+        [:.border.border-neutral-600.p-3.bg-white.grow
+         "Messages window"]
+        [:.h-3]
+        [:.border.border-neutral-600.p-3.h-28.bg-white
+         "Compose window"]]
+       [:<>
+        [:.grow]
+        [:h1.text-3xl.text-center (:comm/title community)]
+        [:.h-6]
+        (biff/form
+         {:action (str "/community/" (:xt/id community) "/join")
+          :class "flex justify-center"}
+         [:button.btn {:type "submit"} "Join this community"])
+        [:div {:class "grow-[1.75]"}]]))))
+
+(defn wrap-community [handler]
+  (fn [{:keys [biff/db path-params] :as req}]
+    (if-some [community (xt/entity db (parse-uuid (:id path-params)))]
+      (handler (assoc req :community community))
+      {:status 303
+       :headers {"location" "/app"}})))
 
 (def features
   {:routes ["" {:middleware [mid/wrap-signed-in]}
             ["/app"           {:get app}]
             ["/community"     {:post new-community}]
-            ["/community/:id" {:get community}]]})
+            ["/community/:id" {:middleware [wrap-community]}
+             [""      {:get community}]
+             ["/join" {:post join-community}]]]})
