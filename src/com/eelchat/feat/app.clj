@@ -17,9 +17,31 @@
         "Sign out"])
       "."]
      [:.h-6]
-     [:div "Thanks for joining the waitlist. "
-      "We'll let you know when eelchat is ready to use."])))
+     (biff/form
+      {:action "/community"}
+      [:button.btn {:type "submit"} "New community"]))))
+
+(defn new-community [{:keys [session] :as req}]
+  (let [comm-id (random-uuid)]
+    (biff/submit-tx req
+      [{:db/doc-type :community
+        :xt/id comm-id
+        :comm/title (str "Community #" (rand-int 1000))}
+       {:db/doc-type :membership
+        :mem/user (:uid session)
+        :mem/comm comm-id
+        :mem/roles #{:admin}}])
+    {:status 303
+     :headers {"Location" (str "/community/" comm-id)}}))
+
+(defn community [{:keys [biff/db path-params] :as req}]
+  (if-some [comm (xt/entity db (parse-uuid (:id path-params)))]
+    (ui/page
+     {}
+     [:p "Welcome to " (:comm/title comm)])))
 
 (def features
-  {:routes ["/app" {:middleware [mid/wrap-signed-in]}
-            ["" {:get app}]]})
+  {:routes ["" {:middleware [mid/wrap-signed-in]}
+            ["/app"           {:get app}]
+            ["/community"     {:post new-community}]
+            ["/community/:id" {:get community}]]})
