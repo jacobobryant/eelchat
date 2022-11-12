@@ -34,11 +34,14 @@
     {:status 303
      :headers {"Location" (str "/community/" comm-id)}}))
 
-(defn community [{:keys [biff/db path-params] :as req}]
+(defn community [{:keys [biff/db user path-params] :as req}]
+  (biff/pprint user)
   (if-some [comm (xt/entity db (parse-uuid (:id path-params)))]
     (ui/page
      {}
-     [:p "Welcome to " (:comm/title comm)])))
+     [:p "Welcome to " (:comm/title comm)])
+    {:status 303
+     :headers {"location" "/app"}}))
 
 (def features
   {:routes ["" {:middleware [mid/wrap-signed-in]}
