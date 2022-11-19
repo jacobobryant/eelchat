@@ -53,7 +53,7 @@
 
 (defn start []
   (biff/start-system
-   {:com.eelchat/chat-clients (atom #{})
+   {:com.eelchat/chat-clients (atom {})
     :biff/features #'features
     :biff/after-refresh `start
     :biff/handler #'handler

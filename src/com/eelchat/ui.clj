@@ -21,7 +21,8 @@
                      :image "/img/logo.png"})
        (update :base/head (fn [head]
                             (concat [[:link {:rel "stylesheet" :href (css-path)}]
-                                     [:script {:src "https://unpkg.com/htmx.org@1.6.1"}]
+                                     [:script {:src "https://unpkg.com/htmx.org@1.8.4"}]
+                                     [:script {:src "https://unpkg.com/htmx.org@1.8.4/dist/ext/ws.js"}]
                                      [:script {:src "https://unpkg.com/hyperscript.org@0.9.3"}]
                                      [:link {:href "/apple-touch-icon.png", :sizes "180x180", :rel "apple-touch-icon"}]
                                      [:link {:href "/favicon-32x32.png", :sizes "32x32", :type "image/png", :rel "icon"}]
