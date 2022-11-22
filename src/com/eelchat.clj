@@ -3,6 +3,7 @@
             [com.eelchat.feat.app :as app]
             [com.eelchat.feat.auth :as auth]
             [com.eelchat.feat.home :as home]
+            [com.eelchat.feat.subscriptions :as sub]
             [com.eelchat.schema :refer [malli-opts]]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -14,6 +15,7 @@
 (def features
   [app/features
    auth/features
+   sub/features
    home/features])
 
 (def routes [["" {:middleware [anti-forgery/wrap-anti-forgery

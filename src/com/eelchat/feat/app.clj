@@ -1,7 +1,9 @@
 (ns com.eelchat.feat.app
   (:require [com.biffweb :as biff :refer [q]]
+            [com.eelchat.feat.subscriptions :as sub]
             [com.eelchat.middleware :as mid]
             [com.eelchat.ui :as ui]
+            [clojure.string :as str]
             [ring.adapter.jetty9 :as jetty]
             [rum.core :as rum]
             [xtdb.api :as xt]))
@@ -83,13 +85,54 @@
         [:div {:class "grow-[1.75]"}]]))))
 
 (defn message-view [{:msg/keys [mem text created-at]}]
-  (let [username (str "User " (subs (str mem) 0 4))]
+  (let [username (if (= :system mem)
+                   "🎅🏻 System 🎅🏻"
+                   (str "User " (subs (str mem) 0 4)))]
     [:div
      [:.text-sm
       [:span.font-bold username]
       [:span.w-2.inline-block]
       [:span.text-gray-600 (biff/format-date created-at "d MMM h:mm aa")]]
      [:p.whitespace-pre-wrap.mb-6 text]]))
+
+(defn command-tx [{:keys [biff/db channel roles params]}]
+  (let [subscribe-url (second (re-find #"^/subscribe ([^\s]+)" (:text params)))
+        unsubscribe-url (second (re-find #"^/unsubscribe ([^\s]+)" (:text params)))
+        list-command (= (str/trimr (:text params)) "/list")
+        message (fn [text]
+                  {:db/doc-type :message
+                   :msg/mem :system
+                   :msg/channel (:xt/id channel)
+                   :msg/text text
+                   ;; Make sure this message comes after the user's message.
+                   :msg/created-at (biff/add-seconds (java.util.Date.) 1)})]
+    (cond
+     (not (contains? roles :admin))
+     nil
+
+     subscribe-url
+     [{:db/doc-type :subscription
+       :db.op/upsert {:sub/url subscribe-url
+                      :sub/chan (:xt/id channel)}}
+      (message (str "Subscribed to " subscribe-url))]
+
+     unsubscribe-url
+     [{:db/op :delete
+       :xt/id (biff/lookup-id db :sub/chan (:xt/id channel) :sub/url unsubscribe-url)}
+      (message (str "Unsubscribed from " unsubscribe-url))]
+
+     list-command
+     [(message (apply
+                str
+                "Subscriptions:"
+                (for [url (->> (q db
+                                  '{:find (pull sub [:sub/url])
+                                    :in [channel]
+                                    :where [[sub :sub/chan channel]]}
+                                  (:xt/id channel))
+                               (map :sub/url)
+                               sort)]
+                  (str "\n - " url))))])))
 
 (defn new-message [{:keys [channel mem params] :as req}]
   (let [msg {:xt/id (random-uuid)
@@ -98,7 +141,8 @@
              :msg/created-at (java.util.Date.)
              :msg/text (:text params)}]
     (biff/submit-tx (assoc req :biff.xtdb/retry false)
-      [(assoc msg :db/doc-type :message)])
+      (concat [(assoc msg :db/doc-type :message)]
+              (command-tx req)))
     (message-view msg)))
 
 (defn channel-page [{:keys [biff/db community channel] :as req}]
@@ -161,6 +205,19 @@
             :when (not= mem-id (:msg/mem doc))]
       (jetty/send! client html))))
 
+(defn on-new-subscription [{:keys [biff.xtdb/node] :as sys} tx]
+  (let [db-before (xt/db node {::xt/tx-id (dec (::xt/tx-id tx))})]
+    (doseq [[op & args] (::xt/tx-ops tx)
+            :when (= op ::xt/put)
+            :let [[doc] args]
+            :when (and (contains? doc :sub/url)
+                       (nil? (xt/entity db-before (:xt/id doc))))]
+      (biff/submit-job sys :fetch-rss (assoc doc :biff/priority 0)))))
+
+(defn on-tx [sys tx]
+  (on-new-message sys tx)
+  (on-new-subscription sys tx))
+
 (defn wrap-community [handler]
   (fn [{:keys [biff/db user path-params] :as req}]
     (if-some [community (xt/entity db (parse-uuid (:id path-params)))]
@@ -194,4 +251,4 @@
                    :post new-message
                    :delete delete-channel}]
               ["/connect" {:get connect}]]]]
-   :on-tx on-new-message})
+   :on-tx on-tx})

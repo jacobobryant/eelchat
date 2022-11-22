@@ -25,6 +25,8 @@
   ;; terminal. It may not be necessary in your editor.
   (biff/fix-print (biff/refresh))
 
+  (com.eelchat.feat.subscriptions/fetch-rss (get-sys))
+
   (let [{:keys [biff/db] :as sys} (get-sys)]
     (q db
        '{:find (pull msg [*])
