@@ -16,7 +16,8 @@
         "Sign out"])
       "."]
      [:.h-6]
-     [:div "Nothing here yet."])))
+     [:div "Thanks for joining the waitlist. "
+      "We'll let you know when eelchat is ready to use."])))
 
 (def plugin
   {:routes ["/app" {:middleware [mid/wrap-signed-in]}

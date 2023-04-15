@@ -8,19 +8,17 @@
 
 (defn signin-link [{:keys [to url user-exists]}]
   {:to to
-   :subject (if user-exists
-              (str "Sign in to " settings/app-name)
-              (str "Sign up for " settings/app-name))
+   :subject "Join the eelchat waitlist"
    :html-body (rum/render-static-markup
                [:html
                 [:body
-                 [:p "We received a request to sign in to " settings/app-name
-                  " using this email address. Click this link to sign in:"]
-                 [:p [:a {:href url :target "_blank"} "Click here to sign in."]]
+                 [:p "We received a request to join " settings/app-name
+                  " using this email address. Click this link to join:"]
+                 [:p [:a {:href url :target "_blank"} "Join the eelchat waitlist"]]
                  [:p "This link will expire in one hour. "
                   "If you did not request this link, you can ignore this email."]]])
-   :text-body (str "We received a request to sign in to " settings/app-name
-                   " using this email address. Click this link to sign in:\n"
+   :text-body (str "We received a request to join " settings/app-name
+                   " using this email address. Click this link to join the waitlist:\n"
                    "\n"
                    url "\n"
                    "\n"

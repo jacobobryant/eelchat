@@ -12,44 +12,68 @@
    "Until you add API keys for Postmark and reCAPTCHA, we'll print your sign-up "
    "link to the console. See config.edn."])
 
-(defn home-page [{:keys [recaptcha/site-key params] :as ctx}]
-  (ui/page
+(defn signup-form [{:keys [recaptcha/site-key params]}]
+  (biff/form
+   {:id "signup"
+    :action "/auth/send-link"
+    :hidden {:on-error "/"}
+    :class "sm:max-w-xs w-full"}
+   (biff/recaptcha-callback "submitSignup" "signup")
+   [:input#email
+    {:name "email"
+     :type "email"
+     :autocomplete "email"
+     :placeholder "Enter your email address"
+     :class '[border
+              border-gray-300
+              rounded
+              w-full
+              focus:border-teal-600
+              focus:ring-teal-600]}]
+   [:.h-3]
+   [:button
+    (merge (when site-key
+             {:data-sitekey site-key
+              :data-callback "submitSignup"})
+           {:type "submit"
+            :class '[bg-teal-600
+                     hover:bg-teal-800
+                     text-white
+                     py-2
+                     px-4
+                     rounded
+                     w-full
+                     g-recaptcha]})
+    "Join the waitlist"]
+   (when-some [error (:error params)]
+     [:<>
+      [:.h-1]
+      [:.text-sm.text-red-600
+       (case error
+         "recaptcha" (str "You failed the recaptcha test. Try again, "
+                          "and make sure you aren't blocking scripts from Google.")
+         "invalid-email" "Invalid email. Try again with a different address."
+         "send-failed" (str "We weren't able to send an email to that address. "
+                            "If the problem persists, try another address.")
+         "There was an error.")]])))
+
+(defn home-page [ctx]
+  (ui/base
    (assoc ctx ::ui/recaptcha true)
-   (biff/form
-    {:action "/auth/send-link"
-     :id "signup"
-     :hidden {:on-error "/"}}
-    (biff/recaptcha-callback "submitSignup" "signup")
-    [:h2.text-2xl.font-bold (str "Sign up for " settings/app-name)]
-    [:.h-3]
-    [:.flex
-     [:input#email {:name "email"
-                    :type "email"
-                    :autocomplete "email"
-                    :placeholder "Enter your email address"}]
-     [:.w-3]
-     [:button.btn.g-recaptcha
-      (merge (when site-key
-               {:data-sitekey site-key
-                :data-callback "submitSignup"})
-             {:type "submit"})
-      "Sign up"]]
-    (when-some [error (:error params)]
-      [:<>
-       [:.h-1]
-       [:.text-sm.text-red-600
-        (case error
-          "recaptcha" (str "You failed the recaptcha test. Try again, "
-                           "and make sure you aren't blocking scripts from Google.")
-          "invalid-email" "Invalid email. Try again with a different address."
-          "send-failed" (str "We weren't able to send an email to that address. "
-                             "If the problem persists, try another address.")
-          "There was an error.")]])
-    [:.h-1]
-    [:.text-sm "Already have an account? " [:a.link {:href "/signin"} "Sign in"] "."]
-    [:.h-3]
-    biff/recaptcha-disclosure
-    email-disabled-notice)))
+   [:.bg-orange-50.flex.flex-col.flex-grow.items-center.p-3
+    [:.h-12.grow]
+    [:img.w-40 {:src "/img/eel.svg"}]
+    [:.h-6]
+    [:.text-2xl.sm:text-3xl.font-semibold.sm:text-center.w-full
+     "The world's finest discussion platform"]
+    [:.h-2]
+    [:.sm:text-lg.sm:text-center.w-full
+     "Communities, channels, messages, even RSS—eelchat has it all. Coming soon."]
+    [:.h-6]
+    (signup-form ctx)
+    [:.h-12 {:class "grow-[2]"}]
+    [:.text-sm biff/recaptcha-disclosure]
+    [:.h-6]]))
 
 (defn link-sent [{:keys [params] :as ctx}]
   (ui/page
