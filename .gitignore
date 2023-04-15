@@ -1,7 +1,6 @@
 /.cpcache
 /.nrepl-port
 /bin
-/config.edn
 /config.sh
 /secrets.env
 /storage/
