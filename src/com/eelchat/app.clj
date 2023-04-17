@@ -44,11 +44,17 @@
     {:status 403
      :body "Forbidden."}))
 
-(defn delete-channel [{:keys [channel roles] :as ctx}]
+(defn delete-channel [{:keys [biff/db channel roles] :as ctx}]
   (when (contains? roles :admin)
     (biff/submit-tx ctx
-      [{:db/op :delete
-        :xt/id (:xt/id channel)}]))
+      (for [id (conj (q db
+                        '{:find msg
+                          :in [channel]
+                          :where [[msg :msg/channel channel]]}
+                        (:xt/id channel))
+                     (:xt/id channel))]
+        {:db/op :delete
+         :xt/id id})))
   [:<>])
 
 (defn community [{:keys [biff/db user community] :as ctx}]
@@ -74,27 +80,66 @@
          [:button.btn {:type "submit"} "Join this community"])
         [:div {:class "grow-[1.75]"}]]))))
 
-(defn channel-page [ctx]
-  ;; We'll update this soon
-  (community ctx))
+(defn message-view [{:msg/keys [mem text created-at]}]
+  (let [username (str "User " (subs (str mem) 0 4))]
+    [:div
+     [:.text-sm
+      [:span.font-bold username]
+      [:span.w-2.inline-block]
+      [:span.text-gray-600 (biff/format-date created-at "d MMM h:mm aa")]]
+     [:p.whitespace-pre-wrap.mb-6 text]]))
+
+(defn new-message [{:keys [channel mem params] :as ctx}]
+  (let [msg {:xt/id (random-uuid)
+             :msg/mem (:xt/id mem)
+             :msg/channel (:xt/id channel)
+             :msg/created-at (java.util.Date.)
+             :msg/text (:text params)}]
+    (biff/submit-tx (assoc ctx :biff.xtdb/retry false)
+      [(assoc msg :db/doc-type :message)])
+    (message-view msg)))
+
+(defn channel-page [{:keys [biff/db community channel] :as ctx}]
+  (let [msgs (q db
+                '{:find (pull msg [*])
+                  :in [channel]
+                  :where [[msg :msg/channel channel]]}
+                (:xt/id channel))]
+    (ui/app-page
+     ctx
+     [:.border.border-neutral-600.p-3.bg-white.grow.flex-1.overflow-y-auto#messages
+      {:_ "on load or newMessage set my scrollTop to my scrollHeight"}
+      (map message-view (sort-by :msg/created-at msgs))]
+     [:.h-3]
+     (biff/form
+      {:hx-post (str "/community/" (:xt/id community)
+                     "/channel/" (:xt/id channel))
+       :hx-target "#messages"
+       :hx-swap "beforeend"
+       :_ (str "on htmx:afterRequest"
+               " set <textarea/>'s value to ''"
+               " then send newMessage to #messages")
+       :class "flex"}
+      [:textarea.w-full#text {:name "text"}]
+      [:.w-2]
+      [:button.btn {:type "submit"} "Send"]))))
 
 (defn wrap-community [handler]
   (fn [{:keys [biff/db user path-params] :as ctx}]
     (if-some [community (xt/entity db (parse-uuid (:id path-params)))]
-      (let [roles (->> (:user/mems user)
-                       (filter (fn [mem]
-                                 (= (:xt/id community) (get-in mem [:mem/comm :xt/id]))))
-                       first
-                       :mem/roles)]
-        (handler (assoc ctx :community community :roles roles)))
+      (let [mem (->> (:user/mems user)
+                     (filter (fn [mem]
+                               (= (:xt/id community) (get-in mem [:mem/comm :xt/id]))))
+                     first)
+            roles (:mem/roles mem)]
+        (handler (assoc ctx :community community :roles roles :mem mem)))
       {:status 303
        :headers {"location" "/app"}})))
 
-
 (defn wrap-channel [handler]
-  (fn [{:keys [biff/db user community path-params] :as ctx}]
+  (fn [{:keys [biff/db user mem community path-params] :as ctx}]
     (let [channel (xt/entity db (parse-uuid (:chan-id path-params)))]
-      (if (= (:chan/comm channel) (:xt/id community))
+      (if (and (= (:chan/comm channel) (:xt/id community)) mem)
         (handler (assoc ctx :channel channel))
         {:status 303
          :headers {"Location" (str "/community/" (:xt/id community))}}))))
@@ -109,4 +154,5 @@
              ["/channel" {:post new-channel}]
              ["/channel/:chan-id" {:middleware [wrap-channel]}
               ["" {:get channel-page
+                   :post new-message
                    :delete delete-channel}]]]]})

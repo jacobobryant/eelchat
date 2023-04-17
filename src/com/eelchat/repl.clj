@@ -13,7 +13,26 @@
         slurp
         edn/read-string)))
 
+(defn seed-channels []
+  (let [{:keys [biff/db] :as ctx} (get-context)]
+    (biff/submit-tx ctx
+      (for [[mem chan] (q db
+                          '{:find [mem chan]
+                            :where [[mem :mem/comm comm]
+                                    [chan :chan/comm comm]]})]
+        {:db/doc-type :message
+         :msg/mem mem
+         :msg/channel chan
+         :msg/created-at :db/now
+         :msg/text (str "Seed message " (rand-int 1000))}))))
+
 (comment
+
+  (seed-channels)
+  (let [{:keys [biff/db] :as ctx} (get-context)]
+    (q db
+       '{:find (pull msg [*])
+         :where [[msg :msg/text]]}))
 
   ;; Call this in dev if you'd like to add some seed data to your database. If
   ;; you edit the seed data (in resources/fixtures.edn), you can reset the
