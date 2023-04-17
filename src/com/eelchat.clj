@@ -3,6 +3,7 @@
             [com.eelchat.email :as email]
             [com.eelchat.app :as app]
             [com.eelchat.home :as home]
+            [com.eelchat.subscriptions :as sub]
             [com.eelchat.schema :as schema]
             [clojure.test :as test]
             [clojure.tools.logging :as log]
@@ -15,6 +16,7 @@
   [app/plugin
    (biff/authentication-plugin {})
    home/plugin
+   sub/plugin
    schema/plugin])
 
 (def routes [["" {:middleware [biff/wrap-site-defaults]}
