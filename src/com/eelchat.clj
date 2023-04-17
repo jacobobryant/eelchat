@@ -51,7 +51,7 @@
    :biff/malli-opts #'malli-opts
    :biff.beholder/on-save #'on-save
    :biff.xtdb/tx-fns biff/tx-fns
-   :com.eelchat/chat-clients (atom #{})})
+   :com.eelchat/chat-clients (atom {})})
 
 (defonce system (atom {}))
 

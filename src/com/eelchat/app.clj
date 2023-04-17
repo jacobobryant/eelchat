@@ -2,6 +2,8 @@
   (:require [com.biffweb :as biff :refer [q]]
             [com.eelchat.middleware :as mid]
             [com.eelchat.ui :as ui]
+            [ring.adapter.jetty9 :as jetty]
+            [rum.core :as rum]
             [xtdb.api :as xt]))
 
 (defn app [ctx]
@@ -97,23 +99,26 @@
              :msg/text (:text params)}]
     (biff/submit-tx (assoc ctx :biff.xtdb/retry false)
       [(assoc msg :db/doc-type :message)])
-    (message-view msg)))
+    [:<>]))
 
 (defn channel-page [{:keys [biff/db community channel] :as ctx}]
   (let [msgs (q db
                 '{:find (pull msg [*])
                   :in [channel]
                   :where [[msg :msg/channel channel]]}
-                (:xt/id channel))]
+                (:xt/id channel))
+        href (str "/community/" (:xt/id community)
+                  "/channel/" (:xt/id channel))]
     (ui/app-page
      ctx
      [:.border.border-neutral-600.p-3.bg-white.grow.flex-1.overflow-y-auto#messages
-      {:_ "on load or newMessage set my scrollTop to my scrollHeight"}
+      {:hx-ext "ws"
+       :ws-connect (str href "/connect")
+       :_ "on load or newMessage set my scrollTop to my scrollHeight"}
       (map message-view (sort-by :msg/created-at msgs))]
      [:.h-3]
      (biff/form
-      {:hx-post (str "/community/" (:xt/id community)
-                     "/channel/" (:xt/id channel))
+      {:hx-post href
        :hx-target "#messages"
        :hx-swap "beforeend"
        :_ (str "on htmx:afterRequest"
@@ -123,6 +128,33 @@
       [:textarea.w-full#text {:name "text"}]
       [:.w-2]
       [:button.btn {:type "submit"} "Send"]))))
+
+(defn connect [{:keys [com.eelchat/chat-clients] {chan-id :xt/id} :channel :as ctx}]
+  {:status 101
+   :headers {"upgrade" "websocket"
+             "connection" "upgrade"}
+   :ws {:on-connect (fn [ws]
+                      (swap! chat-clients update chan-id (fnil conj #{}) ws))
+        :on-close (fn [ws status-code reason]
+                    (swap! chat-clients
+                           (fn [chat-clients]
+                             (let [chat-clients (update chat-clients chan-id disj ws)]
+                               (cond-> chat-clients
+                                 (empty? (get chat-clients chan-id)) (dissoc chan-id))))))}})
+
+(defn on-new-message [{:keys [biff.xtdb/node com.eelchat/chat-clients]} tx]
+  (let [db-before (xt/db node {::xt/tx-id (dec (::xt/tx-id tx))})]
+    (doseq [[op & args] (::xt/tx-ops tx)
+            :when (= op ::xt/put)
+            :let [[doc] args]
+            :when (and (contains? doc :msg/text)
+                       (nil? (xt/entity db-before (:xt/id doc))))
+            :let [html (rum/render-static-markup
+                        [:div#messages {:hx-swap-oob "beforeend"}
+                         (message-view doc)
+                         [:div {:_ "init send newMessage to #messages then remove me"}]])]
+            ws (get @chat-clients (:msg/channel doc))]
+      (jetty/send! ws html))))
 
 (defn wrap-community [handler]
   (fn [{:keys [biff/db user path-params] :as ctx}]
@@ -155,4 +187,6 @@
              ["/channel/:chan-id" {:middleware [wrap-channel]}
               ["" {:get channel-page
                    :post new-message
-                   :delete delete-channel}]]]]})
+                   :delete delete-channel}]
+              ["/connect" {:get connect}]]]]
+   :on-tx on-new-message})
