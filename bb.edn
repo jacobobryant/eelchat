@@ -1,4 +1,4 @@
-{:deps {com.eelchat/tasks {:local/root "tasks"}}
+{:deps {com.eelchat/tasks {:local/root "custom-tasks"}}
  :tasks {;; Used only in local development.
          dev              com.biffweb.tasks/dev
          format           com.biffweb.tasks/format
