@@ -74,6 +74,8 @@
        '{:find (pull message [*])
          :where [[message :message/text]]}))
 
+  (com.eelchat.subscriptions/fetch-rss (get-context))
+
   ;; Call this function if you make a change to main/initial-system,
   ;; main/components, :tasks, :queues, config.env, or deps.edn.
   (main/refresh)

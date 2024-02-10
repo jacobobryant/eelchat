@@ -5,6 +5,7 @@
             [com.eelchat.home :as home]
             [com.eelchat.middleware :as mid]
             [com.eelchat.ui :as ui]
+            [com.eelchat.subscriptions :as sub]
             [com.eelchat.schema :as schema]
             [clojure.test :as test]
             [clojure.tools.logging :as log]
@@ -18,6 +19,7 @@
   [app/module
    (biff/authentication-module {})
    home/module
+   sub/module
    schema/module])
 
 (def routes [["" {:middleware [mid/wrap-site-defaults]}

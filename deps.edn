@@ -1,6 +1,8 @@
 {:paths ["src" "resources" "target/resources"]
  :deps {com.biffweb/biff                    #:git{:url "https://github.com/jacobobryant/biff", :sha "529660f", :tag "v1.0.0"}
         camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
+        remus/remus                         {:mvn/version "0.2.2"}
+        org.jsoup/jsoup                     {:mvn/version "1.11.3"}
         metosin/muuntaja                    {:mvn/version "0.6.8"}
         ring/ring-defaults                  {:mvn/version "0.3.4"}
         org.clojure/clojure                 {:mvn/version "1.11.1"}

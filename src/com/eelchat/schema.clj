@@ -25,10 +25,20 @@
              [:channel/title     :string]
              [:channel/community :community/id]]
 
+   :subscription/id :uuid
+   :subscription [:map {:closed true}
+                  [:xt/id                      :subscription/id]
+                  [:subscription/url           :string]
+                  [:subscription/channel       :channel/id]
+                  [:subscription/last-post-uri {:optional true} :string]
+                  [:subscription/fetched-at    {:optional true} inst?]
+                  [:subscription/last-modified {:optional true} :string]
+                  [:subscription/etag          {:optional true} :string]]
+
    :message/id :uuid
    :message [:map {:closed true}
              [:xt/id              :message/id]
-             [:message/membership :membership/id]
+             [:message/membership [:or :membership/id [:enum :system]]]
              [:message/text       :string]
              [:message/channel    :channel/id]
              [:message/created-at inst?]]})

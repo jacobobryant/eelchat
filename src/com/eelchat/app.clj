@@ -1,7 +1,9 @@
 (ns com.eelchat.app
   (:require [com.biffweb :as biff :refer [q]]
+            [com.eelchat.subscriptions :as sub]
             [com.eelchat.middleware :as mid]
             [com.eelchat.ui :as ui]
+            [clojure.string :as str]
             [ring.adapter.jetty9 :as jetty]
             [rum.core :as rum]
             [xtdb.api :as xt]))
@@ -95,13 +97,54 @@
         [:div {:class "grow-[1.75]"}]]))))
 
 (defn message-view [{:message/keys [membership text created-at]}]
-  (let [username (str "User " (subs (str membership) 0 4))]
+  (let [username (if (= :system membership)
+                   "🎅🏻 System 🎅🏻"
+                   (str "User " (subs (str membership) 0 4)))]
     [:div
      [:.text-sm
       [:span.font-bold username]
       [:span.w-2.inline-block]
       [:span.text-gray-600 (biff/format-date created-at "d MMM h:mm aa")]]
      [:p.whitespace-pre-wrap.mb-6 text]]))
+
+(defn command-tx [{:keys [biff/db channel roles params]}]
+  (let [subscribe-url (second (re-find #"^/subscribe ([^\s]+)" (:text params)))
+        unsubscribe-url (second (re-find #"^/unsubscribe ([^\s]+)" (:text params)))
+        list-command (= (str/trimr (:text params)) "/list")
+        message (fn [text]
+                  {:db/doc-type :message
+                   :message/membership :system
+                   :message/channel (:xt/id channel)
+                   :message/text text
+                   ;; Make sure this message comes after the user's message.
+                   :message/created-at (biff/add-seconds (java.util.Date.) 1)})]
+    (cond
+      list-command
+      [(message (apply
+                 str
+                 "Subscriptions:"
+                 (for [url (->> (q db
+                                   '{:find (pull subscription [:subscription/url])
+                                     :in [channel]
+                                     :where [[subscription :subscription/channel channel]]}
+                                   (:xt/id channel))
+                                (map :subscription/url)
+                                sort)]
+                   (str "\n - " url))))]
+
+      (not (contains? roles :admin))
+      nil
+
+      subscribe-url
+      [{:db/doc-type :subscription
+        :db.op/upsert {:subscription/url subscribe-url
+                       :subscription/channel (:xt/id channel)}}
+       (message (str "Subscribed to " subscribe-url))]
+
+      unsubscribe-url
+      [{:db/op :delete
+        :xt/id (biff/lookup-id db :subscription/channel (:xt/id channel) :subscription/url unsubscribe-url)}
+       (message (str "Unsubscribed from " unsubscribe-url))])))
 
 (defn new-message [{:keys [channel membership params] :as ctx}]
   (let [message {:xt/id (random-uuid)
@@ -110,7 +153,8 @@
              :message/created-at (java.util.Date.)
              :message/text (:text params)}]
     (biff/submit-tx (assoc ctx :biff.xtdb/retry false)
-      [(assoc message :db/doc-type :message)])
+      (concat [(assoc message :db/doc-type :message)]
+              (command-tx ctx)))
     [:<>]))
 
 (defn channel-page [{:keys [biff/db community channel] :as ctx}]
@@ -169,6 +213,19 @@
             ws (get @chat-clients (:message/channel doc))]
       (jetty/send! ws html))))
 
+(defn on-new-subscription [{:keys [biff.xtdb/node] :as ctx} tx]
+  (let [db-before (xt/db node {::xt/tx-id (dec (::xt/tx-id tx))})]
+    (doseq [[op & args] (::xt/tx-ops tx)
+            :when (= op ::xt/put)
+            :let [[doc] args]
+            :when (and (contains? doc :subscription/url)
+                       (nil? (xt/entity db-before (:xt/id doc))))]
+      (biff/submit-job ctx :fetch-rss (assoc doc :biff/priority 0)))))
+
+(defn on-tx [ctx tx]
+  (on-new-message ctx tx)
+  (on-new-subscription ctx tx))
+
 (defn wrap-community [handler]
   (fn [{:keys [biff/db user path-params] :as ctx}]
     (if-some [community (xt/entity db (parse-uuid (:id path-params)))]
@@ -203,4 +260,4 @@
                    :post new-message
                    :delete delete-channel}]
               ["/connect" {:get connect}]]]]
-   :on-tx on-new-message})
+   :on-tx on-tx})
