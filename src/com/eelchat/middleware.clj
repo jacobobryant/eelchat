@@ -2,7 +2,8 @@
   (:require [com.biffweb :as biff]
             [muuntaja.middleware :as muuntaja]
             [ring.middleware.anti-forgery :as csrf]
-            [ring.middleware.defaults :as rd]))
+            [ring.middleware.defaults :as rd]
+            [xtdb.api :as xt]))
 
 (defn wrap-redirect-signed-in [handler]
   (fn [{:keys [session] :as ctx}]
@@ -12,11 +13,14 @@
       (handler ctx))))
 
 (defn wrap-signed-in [handler]
-  (fn [{:keys [session] :as ctx}]
-    (if (some? (:uid session))
-      (handler ctx)
+  (fn [{:keys [biff/db session] :as ctx}]
+    (if-some [user (xt/pull db
+                            '[* {(:membership/_user {:as :user/memberships})
+                                 [* {:membership/community [*]}]}]
+                            (:uid session))]
+      (handler (assoc ctx :user user))
       {:status 303
-       :headers {"location" "/signin?error=not-signed-in"}})))
+       :headers {"location" "/?error=not-signed-in"}})))
 
 ;; Stick this function somewhere in your middleware stack below if you want to
 ;; inspect what things look like before/after certain middleware fns run.
