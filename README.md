@@ -1,7 +1,8 @@
-# Biff starter project
+# eelchat
 
-This is the starter project for Biff.
+This is the code for [the Biff
+tutorial](https://biffweb.com/docs/tutorial/build-a-chat-app/).
+See [the commits](https://github.com/jacobobryant/eelchat/commits/master) to view the
+code from a specific part of the tutorial.
 
-Run `clj -M:dev dev` to get started. See `clj -M:dev --help` for other commands.
-
-Consider adding `alias biff='clj -M:dev'` to your `.bashrc`.
+Run `clj -M:dev dev` to start the app.
