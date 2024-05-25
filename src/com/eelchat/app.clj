@@ -44,11 +44,17 @@
     {:status 403
      :body "Forbidden."}))
 
-(defn delete-channel [{:keys [channel roles] :as ctx}]
+(defn delete-channel [{:keys [biff/db channel roles] :as ctx}]
   (when (contains? roles :admin)
     (biff/submit-tx ctx
-      [{:db/op :delete
-        :xt/id (:xt/id channel)}]))
+      (for [id (conj (q db
+                        '{:find message
+                          :in [channel]
+                          :where [[message :message/channel channel]]}
+                        (:xt/id channel))
+                     (:xt/id channel))]
+        {:db/op :delete
+         :xt/id id})))
   [:<>])
 
 (defn community [{:keys [biff/db user community] :as ctx}]
@@ -74,27 +80,66 @@
          [:button.btn {:type "submit"} "Join this community"])
         [:div {:class "grow-[1.75]"}]]))))
 
-(defn channel-page [ctx]
-  ;; We'll update this soon
-  (community ctx))
+(defn message-view [{:message/keys [membership text created-at]}]
+  (let [username (str "User " (subs (str membership) 0 4))]
+    [:div
+     [:.text-sm
+      [:span.font-bold username]
+      [:span.w-2.inline-block]
+      [:span.text-gray-600 (biff/format-date created-at "d MMM h:mm aa")]]
+     [:p.whitespace-pre-wrap.mb-6 text]]))
+
+(defn new-message [{:keys [channel membership params] :as ctx}]
+  (let [message {:xt/id (random-uuid)
+             :message/membership (:xt/id membership)
+             :message/channel (:xt/id channel)
+             :message/created-at (java.util.Date.)
+             :message/text (:text params)}]
+    (biff/submit-tx (assoc ctx :biff.xtdb/retry false)
+      [(assoc message :db/doc-type :message)])
+    (message-view message)))
+
+(defn channel-page [{:keys [biff/db community channel] :as ctx}]
+  (let [messages (q db
+                    '{:find (pull message [*])
+                      :in [channel]
+                      :where [[message :message/channel channel]]}
+                    (:xt/id channel))]
+    (ui/app-page
+     ctx
+     [:.border.border-neutral-600.p-3.bg-white.grow.flex-1.overflow-y-auto#messages
+      {:_ "on load or newMessage set my scrollTop to my scrollHeight"}
+      (map message-view (sort-by :message/created-at messages))]
+      [:.h-3]
+      (biff/form
+       {:hx-post (str "/community/" (:xt/id community)
+                      "/channel/" (:xt/id channel))
+        :hx-target "#messages"
+        :hx-swap "beforeend"
+        :_ (str "on htmx:afterRequest"
+                " set <textarea/>'s value to ''"
+                " then send newMessage to #messages")
+        :class "flex"}
+       [:textarea.w-full#text {:name "text"}]
+       [:.w-2]
+       [:button.btn {:type "submit"} "Send"]))))
 
 (defn wrap-community [handler]
   (fn [{:keys [biff/db user path-params] :as ctx}]
     (if-some [community (xt/entity db (parse-uuid (:id path-params)))]
-      (let [roles (->> (:user/memberships user)
-                       (filter (fn [membership]
-                                 (= (:xt/id community)
-                                    (get-in membership [:membership/community :xt/id]))))
-                       first
-                       :membership/roles)]
-        (handler (assoc ctx :community community :roles roles)))
+      (let [membership (->> (:user/memberships user)
+                            (filter (fn [membership]
+                                      (= (:xt/id community) (get-in membership [:membership/community :xt/id]))))
+                            first)
+            roles (:membership/roles membership)]
+        (handler (assoc ctx :community community :roles roles :membership membership)))
       {:status 303
        :headers {"location" "/app"}})))
 
 (defn wrap-channel [handler]
-  (fn [{:keys [biff/db user community path-params] :as ctx}]
+  (fn [{:keys [biff/db user membership community path-params] :as ctx}]
     (let [channel (xt/entity db (parse-uuid (:channel-id path-params)))]
-      (if (= (:channel/community channel) (:xt/id community))
+      (if (and (= (:channel/community channel) (:xt/id community)) membership)
         (handler (assoc ctx :channel channel))
         {:status 303
          :headers {"Location" (str "/community/" (:xt/id community))}}))))
@@ -109,4 +154,5 @@
              ["/channel" {:post new-channel}]
              ["/channel/:channel-id" {:middleware [wrap-channel]}
               ["" {:get channel-page
+                   :post new-message
                    :delete delete-channel}]]]]})

@@ -53,7 +53,28 @@
      :prod-secrets (get-secrets prod-config)
      :dev-secrets (get-secrets dev-config)}))
 
+(defn seed-channels []
+  (let [{:keys [biff/db] :as ctx} (get-context)]
+    (biff/submit-tx ctx
+      (for [[membership channel]
+            (q db
+               '{:find [membership channel]
+                 :where [[membership :membership/community community]
+                         [channel :channel/community community]]})]
+        {:db/doc-type :message
+         :message/membership membership
+         :message/channel channel
+         :message/created-at :db/now
+         :message/text (str "Seed message " (rand-int 1000))}))))
+
 (comment
+  (seed-channels)
+
+  (let [{:keys [biff/db] :as ctx} (get-context)]
+    (q db
+       '{:find (pull message [*])
+         :where [[message :message/text]]}))
+
   ;; Call this function if you make a change to main/initial-system,
   ;; main/components, :tasks, :queues, config.env, or deps.edn.
   (main/refresh)
