@@ -7,26 +7,23 @@
             [rum.core :as rum]))
 
 (defn signin-link [{:keys [to url user-exists]}]
-  (let [[subject action] (if user-exists
-                           [(str "Sign in to " settings/app-name) "sign in"]
-                           [(str "Sign up for " settings/app-name) "sign up"])]
-    {:to [{:email to}]
-     :subject subject
-     :html (rum/render-static-markup
-            [:html
-             [:body
-              [:p "We received a request to " action " to " settings/app-name
-               " using this email address. Click this link to " action ":"]
-              [:p [:a {:href url :target "_blank"} "Click here to " action "."]]
-              [:p "This link will expire in one hour. "
-               "If you did not request this link, you can ignore this email."]]])
-     :text (str "We received a request to " action " to " settings/app-name
-                " using this email address. Click this link to " action ":\n"
-                "\n"
-                url "\n"
-                "\n"
-                "This link will expire in one hour. If you did not request this link, "
-                "you can ignore this email.")}))
+  {:to [{:email to}]
+   :subject "Join the eelchat waitlist"
+   :html (rum/render-static-markup
+          [:html
+           [:body
+            [:p "We received a request to join " settings/app-name
+             " using this email address. Click this link to join:"]
+            [:p [:a {:href url :target "_blank"} "Join the eelchat waitlist"]]
+            [:p "This link will expire in one hour. "
+             "If you did not request this link, you can ignore this email."]]])
+   :text (str "We received a request to join " settings/app-name
+              " using this email address. Click this link to join the waitlist:\n"
+              "\n"
+              url "\n"
+              "\n"
+              "This link will expire in one hour. If you did not request this link, "
+              "you can ignore this email.")})
 
 (defn signin-code [{:keys [to code user-exists]}]
   (let [[subject action] (if user-exists
