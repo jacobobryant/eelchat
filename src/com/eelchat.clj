@@ -3,6 +3,7 @@
             [com.eelchat.email :as email]
             [com.eelchat.app :as app]
             [com.eelchat.home :as home]
+            [com.eelchat.subscriptions :as sub]
             [com.eelchat.middleware :as mid]
             [com.eelchat.ui :as ui]
             [com.eelchat.schema :as schema]
@@ -18,6 +19,7 @@
   [app/module
    (biff/authentication-module {})
    home/module
+   sub/module
    schema/module])
 
 (def routes [["" {:middleware [mid/wrap-site-defaults]}
